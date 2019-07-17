@@ -15,8 +15,8 @@ import xyz.elidom.orm.OrmConstants;
 import xyz.elidom.sys.util.ThrowUtil;
 import xyz.elidom.util.BeanUtil;
 
-@Table(name = "tb_print_templates", idStrategy = GenerationRule.UUID, uniqueFields = "domainId,name", indexes = {
-		@Index(name = "ix_tb_print_templates_0", columnList = "name,domain_id", unique = true) 
+@Table(name = "tb_print_template", idStrategy = GenerationRule.UUID, uniqueFields = "domainId,name", indexes = {
+		@Index(name = "ix_tb_print_template_0", columnList = "name,domain_id", unique = true) 
 })
 public class PrintTemplate extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 	
