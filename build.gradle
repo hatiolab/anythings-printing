@@ -29,11 +29,9 @@ repositories {
 }
 
 ext {
-	elingsSysVersion = getLastVersion('elings-sys')
-	elingsUtilVersion = getLastVersion('elings-util')
 }
 
 dependencies {
-	compile("com.hatiolab:elings-sys:${elingsSysVersion}") {changing = true}
-	compile("com.hatiolab:elings-util:${elingsUtilVersion}") {changing = true}
+	compile("net.sf.jasperreports:jasperreports:6.5.1")
+	compile project(':anythings-sys')
 }
