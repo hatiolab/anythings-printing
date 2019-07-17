@@ -21,12 +21,12 @@ import xyz.elidom.sys.system.service.api.IServiceFinder;
  * @author yang
  */
 @Component
-public class AnythingsCommRabbitmqInitializer {
+public class AnythingsPrintingInitializer {
 
 	/**
 	 * Logger
 	 */
-	private Logger logger = LoggerFactory.getLogger(AnythingsCommRabbitmqInitializer.class);
+	private Logger logger = LoggerFactory.getLogger(AnythingsPrintingInitializer.class);
 	
 	@Autowired
 	@Qualifier("rest")
