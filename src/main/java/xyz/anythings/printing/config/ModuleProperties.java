@@ -14,10 +14,10 @@ import xyz.elidom.util.FormatUtil;
  * 
  * @author yang
  */
-@Component
+@Component("anythingsPrintingModuleProperties")
 @EnableConfigurationProperties
 @PropertySource("classpath:/properties/anythings-printing.properties")
-public class AnythingsPrintingModuleProperties implements IModuleProperties {
+public class ModuleProperties implements IModuleProperties {
 	
 	/**
 	 * 모듈명
@@ -68,6 +68,13 @@ public class AnythingsPrintingModuleProperties implements IModuleProperties {
 	private String scanEntityPackage;
 	
 	/**
+	 * 모듈에서 사용할 rabbitmq 큐 명칭 
+	 */
+	@Value("${anythings.printing.rabbitQueue:not_use}")
+	private String rabbitQueue;
+
+	
+	/**
 	 * Project Name
 	 * @return
 	 */
@@ -108,6 +115,10 @@ public class AnythingsPrintingModuleProperties implements IModuleProperties {
 	
 	public String getProjectName() {
 		return this.projectName;
+	}
+
+	public String getRabbitQueue() {
+		return this.rabbitQueue;
 	}
 
 	@Override

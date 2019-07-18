@@ -10,7 +10,7 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import xyz.anythings.printing.config.AnythingsPrintingModuleProperties;
+import xyz.anythings.printing.config.ModuleProperties;
 import xyz.elidom.sys.config.ModuleConfigSet;
 import xyz.elidom.sys.system.service.api.IEntityFieldCache;
 import xyz.elidom.sys.system.service.api.IServiceFinder;
@@ -36,7 +36,7 @@ public class AnythingsPrintingInitializer {
 	private IEntityFieldCache entityFieldCache;
 	
 	@Autowired
-	private AnythingsPrintingModuleProperties module;
+	private ModuleProperties module;
 	
 	@Autowired
 	private ModuleConfigSet configSet;
