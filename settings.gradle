@@ -19,3 +19,4 @@ include ':anythings-sys'
 
 project(':anythings-sys').projectDir = new File(settingsDir, '../anythings-sys')
 
+include ':anythings-sys'
