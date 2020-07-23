@@ -1,4 +1,4 @@
-package xyz.anythings.printing.rest;
+package xyz.anythings.base.rest;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -38,12 +38,13 @@ import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.data.JsonDataSource;
 import net.sf.jasperreports.engine.design.JasperDesign;
 import net.sf.jasperreports.engine.xml.JRXmlLoader;
+import xyz.anythings.base.entity.Printer;
+import xyz.anythings.base.entity.Printout;
 import xyz.anythings.printing.PrintingConstants;
-import xyz.anythings.printing.entity.PrintTemplate;
-import xyz.anythings.printing.entity.Printer;
-import xyz.anythings.printing.entity.Report;
 import xyz.anythings.sys.AnyConstants;
+import xyz.anythings.sys.util.AnyEntityUtil;
 import xyz.elidom.dbist.dml.Page;
+import xyz.elidom.dev.entity.DiyTemplate;
 import xyz.elidom.exception.ElidomException;
 import xyz.elidom.exception.server.ElidomServiceException;
 import xyz.elidom.exception.server.ElidomValidationException;
@@ -51,21 +52,23 @@ import xyz.elidom.orm.system.annotation.service.ApiDesc;
 import xyz.elidom.orm.system.annotation.service.ServiceDesc;
 import xyz.elidom.sys.SysConstants;
 import xyz.elidom.sys.entity.Domain;
+import xyz.elidom.sys.system.engine.IScriptEngine;
 import xyz.elidom.sys.system.service.AbstractRestService;
 import xyz.elidom.sys.util.ThrowUtil;
+import xyz.elidom.util.BeanUtil;
 import xyz.elidom.util.FormatUtil;
 import xyz.elidom.util.ValueUtil;
 
 @RestController
 @Transactional
 @ResponseStatus(HttpStatus.OK)
-@RequestMapping("/rest/report")
-@ServiceDesc(description = "Report Service API")
-public class ReportController extends AbstractRestService {
+@RequestMapping("/rest/printouts")
+@ServiceDesc(description = "Printout Service API")
+public class PrintoutController extends AbstractRestService {
 
 	@Override
 	protected Class<?> entityClass() {
-		return Report.class;
+		return Printout.class;
 	}
 
 	@RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -75,13 +78,12 @@ public class ReportController extends AbstractRestService {
 			@RequestParam(name = "select", required = false) String select,
 			@RequestParam(name = "sort", required = false) String sort,
 			@RequestParam(name = "query", required = false) String query) {
-
 		return this.search(this.entityClass(), page, limit, select, sort, query);
 	}
 
 	@RequestMapping(value = "/{id}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	@ApiDesc(description = "Find one by ID")
-	public Report findOne(@PathVariable("id") String id) {
+	public Printout findOne(@PathVariable("id") String id) {
 		return this.getOne(this.entityClass(), id);
 	}
 
@@ -94,28 +96,28 @@ public class ReportController extends AbstractRestService {
 	@RequestMapping(method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.CREATED)
 	@ApiDesc(description = "Create")
-	public Report create(@RequestBody Report input) {
+	public Printout create(@RequestBody Printout input) {
 		return this.createOne(input);
 	}
 
 	@RequestMapping(value = "/{id}", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	@ApiDesc(description = "Update")
-	public Report update(@PathVariable("id") String id, @RequestBody Report input) {
+	public Printout update(@PathVariable("id") String id, @RequestBody Printout input) {
 		return this.updateOne(input);
 	}
 
 	@RequestMapping(value = "/{id}", method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE)
 	@ApiDesc(description = "Delete")
 	public void delete(@PathVariable("id") String id) {
-		this.deleteOne(this.getClass(), id);
+		this.deleteOne(this.entityClass(), id);
 	}
 
 	@RequestMapping(value = "/update_multiple", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	@ApiDesc(description = "Create, Update or Delete multiple at one time")
-	public Boolean multipleUpdate(@RequestBody List<Report> list) {
+	public Boolean multipleUpdate(@RequestBody List<Printout> list) {
 		return this.cudMultipleData(this.entityClass(), list);
 	}
-		
+
 	@SuppressWarnings("unchecked")
 	@RequestMapping(value = "/print_pdf/by_template/{template_name}", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
 	@ApiDesc(description = "Printing Report PDF By Print Template Name")
@@ -127,6 +129,7 @@ public class ReportController extends AbstractRestService {
 		Long domainId = Domain.currentDomainId();
 		Printer printer = null;
 		
+		// 1. printerId 파라미터로 프린트 조회
 		if(printerId != null) {
 			printer = Printer.findByIdOrName(domainId, printerId, false);
 		}
@@ -135,23 +138,22 @@ public class ReportController extends AbstractRestService {
 			printer = Printer.findDefaultNormalPrinter(domainId);
 		}
 		
-		// 1. Print Template 이름으로 Print Template을 조회한 후  
-		PrintTemplate template = this.findTemplate(printer.getDomainId(), templateName);
+		// 2. Print Template 이름으로 Print Template을 조회한 후  
+		DiyTemplate template = AnyEntityUtil.findEntityByCode(domainId, true, DiyTemplate.class, "name", templateName);
 		String reportContent = template.getTemplate();
-		String reportService = template.getServiceName();
+		String reportLogic = template.getLogic();
 		
 		if(ValueUtil.isEmpty(reportContent)) {
 			throw new ElidomValidationException("리포트 템플릿의 내용이 없습니다.");
 		}
 		
-		if(ValueUtil.isEmpty(reportService)) {
+		if(ValueUtil.isEmpty(reportLogic)) {
 			throw new ElidomValidationException("리포트 템플릿의 서비스가 등록 되지 않았습니다.");
 		}
 		
-		
-		// 2. 조회한 Print Template으로 로직 실행
-		Map<String, Object> result = template.getServiceLogicData(params);
-		
+		// 3. 조회한 Print Template으로 로직 실행
+		IScriptEngine scriptEngine = BeanUtil.get(IScriptEngine.class);
+		Map<String, Object> result = (Map<String, Object>)scriptEngine.runScript("groovy", reportLogic, ValueUtil.newMap("domain_id,params", template.getDomainId(), params));		
 		Map<String, Object> header = (Map<String, Object>) result.get("header");
 		List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
 		this.printReport(domainId, templateName, reportContent, header, items, printer);
@@ -168,29 +170,30 @@ public class ReportController extends AbstractRestService {
 			@RequestBody Map<String, Object> params) {
 		
 		// 1. ID로 객체 찾기 
-		Report report = this.findOne(id);
+		Printout report = this.findOne(id);
 		
 		// 2. 리포트 정보로 부터 커스텀 템플릿 조회  
-		String templateName = report.getReportPrintUrl();
+		String templateName = report.getTemplateCd();
 		if(ValueUtil.isEmpty(templateName)) {
 			throw new ElidomValidationException("리포트 템플릿을 찾을 수 없습니다.");
 		}
 		
 		// 3. 프린트 템플릿으로 부터 리포트 템플릿, 서비스 로직 조회
-		PrintTemplate template = this.findTemplate(report.getDomainId(), templateName);
+		DiyTemplate template = AnyEntityUtil.findEntityByCode(report.getDomainId(), true, DiyTemplate.class, "name", templateName);
 		String reportContent = template.getTemplate();
-		String reportService = template.getServiceName();
+		String reportLogic = template.getLogic();
 		
 		if(ValueUtil.isEmpty(reportContent)) {
 			throw new ElidomValidationException("리포트 템플릿의 내용이 없습니다.");
 		}
 		
-		if(ValueUtil.isEmpty(reportService)) {
-			throw new ElidomValidationException("리포트 템플릿의 서비스가 등록 되지 않았습니다.");
+		if(ValueUtil.isEmpty(reportLogic)) {
+			throw new ElidomValidationException("리포트 템플릿의 서비스가 등록되지 않았습니다.");
 		}
 		
 		// 4. 리포트에 데이터 매핑 및 다운로드
-		Map<String, Object> result = template.getServiceLogicData(params);	
+		IScriptEngine scriptEngine = BeanUtil.get(IScriptEngine.class);
+		Map<String, Object> result = (Map<String, Object>)scriptEngine.runScript("groovy", reportLogic, ValueUtil.newMap("domain_id,params", template.getDomainId(), params));		
 		Map<String, Object> header = (Map<String, Object>) result.get("header");
 		List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
 		this.downloadReportByJRXml(res, report.getReportCd(), reportContent, header, items);
@@ -252,8 +255,7 @@ public class ReportController extends AbstractRestService {
 	private JasperReport loadReportByJRxml(String jrxmlContent) throws Exception {
 		InputStream is = new ByteArrayInputStream(jrxmlContent.getBytes());
 		JasperDesign jasperDesign = JRXmlLoader.load(is);
-		JasperReport jasperReport = JasperCompileManager.compileReport(jasperDesign);
-		return jasperReport;		
+		return JasperCompileManager.compileReport(jasperDesign);
 	}
 	
 	/**
@@ -355,33 +357,18 @@ public class ReportController extends AbstractRestService {
 	}
 	
 	/**
-	 * 리포트 일반 프린터로 인쇄 
+	 * 리포트 일반 프린터로 인쇄
 	 * 
 	 * @param domainId
 	 * @param reportCd
 	 * @param reportSrcPath
 	 * @param reportHeader
 	 * @param reportDataList
-	 * @param printer
+	 * @param printerId
 	 */
 	public void printReport(Long domainId, String reportCd, String reportSrcPath, Map<String, Object> reportHeader, List<Map<String, Object>> reportDataList, String printerId) {
 		Printer printer = Printer.findByIdOrName(domainId, printerId, true);
 		this.printReport(domainId, reportCd, reportSrcPath, reportHeader, reportDataList, printer);
 	}
-	
-	
-	/**
-	 * 템플릿 이름으로 템플릿을 찾는다 
-	 * @param templateName
-	 * @return
-	 */
-	private PrintTemplate findTemplate(Long domainId, String templateName) {
-		PrintTemplate template = PrintTemplate.findByName(domainId, templateName, true);
-		
-		if(!ValueUtil.isEqualIgnoreCase(template.getTemplateType(), PrintingConstants.PRINTER_TYPE_NORMAL)) {
-			throw new ElidomValidationException("리포트 템플릿이 지원하지 않는 형식 입니다.");
-		}
-		
-		return template;
-	}
+
 }

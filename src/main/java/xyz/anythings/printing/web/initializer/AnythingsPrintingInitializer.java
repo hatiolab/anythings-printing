@@ -41,15 +41,15 @@ public class AnythingsPrintingInitializer {
 	@Autowired
 	private ModuleConfigSet configSet;
 
-	@EventListener({ ContextRefreshedEvent.class })
-	public void ready(ContextRefreshedEvent event) {
+	@EventListener({ ApplicationReadyEvent.class })
+	public void ready(ApplicationReadyEvent event) {
 		this.logger.info("Anythings Printing module initializing ready...");
 		this.configSet.addConfig(this.module.getName(), this.module);
 		this.scanServices();		
 	}
 	
-	@EventListener({ApplicationReadyEvent.class})
-    void contextRefreshedEvent(ApplicationReadyEvent event) {
+	@EventListener({ContextRefreshedEvent.class})
+    void contextRefreshedEvent(ContextRefreshedEvent event) {
 		this.logger.info("Anythings Printingmodule initializing started...");		
     }
 	

@@ -1,4 +1,4 @@
-package xyz.anythings.printing.entity;
+package xyz.anythings.base.entity;
 
 import java.util.List;
 
@@ -16,56 +16,72 @@ import xyz.elidom.sys.util.ThrowUtil;
 import xyz.elidom.util.BeanUtil;
 import xyz.elidom.util.ValueUtil;
 
-@Table(name = "tb_printer", idStrategy = GenerationRule.UUID, uniqueFields = "domainId,printerCd", indexes = {
-		@Index(name = "ix_tb_printer_0", columnList = "domain_id,printer_cd", unique = true) 
+/**
+ * 바코드 프린터
+ * 
+ * @author shortstop
+ */
+@Table(name = "printers", idStrategy = GenerationRule.UUID, uniqueFields="domainId,printerCd", indexes = {
+	@Index(name = "ix_printers_0", columnList = "domain_id,printer_cd", unique = true),
+	@Index(name = "ix_printers_1", columnList = "domain_id,stage_cd")
 })
 public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 	/**
-	 * serialVersionUID
+	 * SerialVersion UID
 	 */
-	private static final long serialVersionUID = 1554003864904391505L;
-	
+	private static final long serialVersionUID = 315339403280044039L;
 
 	@PrimaryKey
-	@Column(name = "id", nullable = false, length = 40)
+	@Column (name = "id", nullable = false, length = 40)
 	private String id;
 
-	@Column(name = "printer_cd", nullable = false, length = 30)
+	@Column (name = "stage_cd", length = 30)
+	private String stageCd;
+	
+	@Column (name = "printer_cd", nullable = false, length = 30)
 	private String printerCd;
 
-	@Column(name = "printer_nm", nullable = false, length = 100)
+	@Column (name = "printer_nm", nullable = false, length = 100)
 	private String printerNm;
 
-	@Column(name = "printer_type", length = 20)
+	@Column (name = "printer_type", length = 20)
 	private String printerType;
 
-	@Column(name = "printer_ip", nullable = false, length = 16)
+	@Column (name = "printer_ip", nullable = false, length = 16)
 	private String printerIp;
 
-	@Column(name = "printer_port", length = 5)
+	@Column (name = "printer_port", length = 12)
 	private Integer printerPort;
-	
-	@Column(name = "printer_driver", length = 40)
+
+	@Column (name = "printer_driver", length = 40)
 	private String printerDriver;
-	
-	@Column(name = "printer_agent_url", length = 255)
+
+	@Column (name = "printer_agent_url")
 	private String printerAgentUrl;
 
-	@Column(name = "status", length = 10)
+	@Column (name = "status", length = 10)
 	private String status;
 
-	@Column(name = "remark", length = 1000)
+	@Column (name = "remark", length = 1000)
 	private String remark;
-	
-	@Column(name = "default_flag")
-	private Boolean defaultFlag;
 
+	@Column (name = "default_flag", length = 1)
+	private Boolean defaultFlag;
+  
 	public String getId() {
 		return id;
 	}
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public String getStageCd() {
+		return stageCd;
+	}
+
+	public void setStageCd(String stageCd) {
+		this.stageCd = stageCd;
 	}
 
 	public String getPrinterCd() {
@@ -139,7 +155,7 @@ public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 	public void setRemark(String remark) {
 		this.remark = remark;
 	}
-	
+
 	public Boolean getDefaultFlag() {
 		return defaultFlag;
 	}
@@ -147,7 +163,7 @@ public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 	public void setDefaultFlag(Boolean defaultFlag) {
 		this.defaultFlag = defaultFlag;
 	}
-
+	
 	/**
 	 * printerId로 프린터를 조회
 	 * 
@@ -167,7 +183,7 @@ public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 		
 		return printer;
 	}
-	
+
 	/**
 	 * printerId 혹은 printerName으로 프린터 조회
 	 * 
@@ -180,21 +196,45 @@ public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 		Printer printer = Printer.find(domainId, printerIdOrName, false);
 		
 		if(printer == null) {
-			printer = Printer.findPrinter(domainId, printerIdOrName, exceptionWhenEmpty);
+			printer = Printer.findByPrinterCd(domainId, printerIdOrName, false);
+			
+			if(printer == null) {
+				printer = Printer.findByPrinterNm(domainId, printerIdOrName, exceptionWhenEmpty);
+			}
 		}
 		
 		return printer;
 	}
 	
 	/**
-	 * printerName으로 프린터 조회
+	 * 프린터 코드로 프린터 조회
+	 * 
+	 * @param domainId
+	 * @param printerCd
+	 * @param exceptionWhenEmpty
+	 * @return
+	 */
+	public static Printer findByPrinterCd(Long domainId, String printerCd, boolean exceptionWhenEmpty) {
+		Query condition = AnyOrmUtil.newConditionForExecution(domainId);
+		condition.addFilter("printerCd", printerCd);
+		Printer printer = BeanUtil.get(IQueryManager.class).selectByCondition(Printer.class, condition);
+		
+		if(exceptionWhenEmpty && printer == null) {
+			throw new ElidomValidationException("프린터 [" + printer + "]가 존재하지 않습니다.");
+		}
+		
+		return printer;
+	}
+	
+	/**
+	 * 프린터 명으로 프린터 조회
 	 * 
 	 * @param domainId
 	 * @param printerName
 	 * @param exceptionWhenEmpty
 	 * @return
 	 */
-	public static Printer findPrinter(Long domainId, String printerName, boolean exceptionWhenEmpty) {
+	public static Printer findByPrinterNm(Long domainId, String printerName, boolean exceptionWhenEmpty) {
 		Query condition = AnyOrmUtil.newConditionForExecution(domainId);
 		condition.addFilter("printerNm", printerName);
 		Printer printer = BeanUtil.get(IQueryManager.class).selectByCondition(Printer.class, condition);
@@ -205,7 +245,6 @@ public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 		
 		return printer;
 	}
-	
 	
 	/**
 	 * 도메인 내 기본 바코드 프린터 조회
@@ -231,6 +270,7 @@ public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 	 * 도메인 내 프린터 조회
 	 * 
 	 * @param domainId
+	 * @param printerType
 	 * @return
 	 */
 	public static Printer findDefaultPrinter(Long domainId, String printerType) {
@@ -239,34 +279,9 @@ public class Printer extends xyz.elidom.orm.entity.basic.ElidomStampHook {
 		condition.addFilter("printerType", printerType);
 		condition.setPageIndex(1);
 		condition.setPageSize(1);
-		List<Printer> printerList = BeanUtil.get(IQueryManager.class).selectList(Printer.class, condition);
 		
-		if(ValueUtil.isNotEmpty(printerList)) {
-			return printerList.get(0);
-		} else {
-			return null;
-		}
+		List<Printer> printerList = BeanUtil.get(IQueryManager.class).selectList(Printer.class, condition);		
+		return ValueUtil.isNotEmpty(printerList) ? printerList.get(0) : null;
 	}
-	
-	/**
-	 * 프린터 코드로 프린터 조회 
-	 * @param domainId
-	 * @param printerCd
-	 * @param exceptionWhenEmpty
-	 * @return
-	 */
-	public static Printer findByPrinterCd(Long domainId, String printerCd, boolean exceptionWhenEmpty) {
-		
-		Query condition = AnyOrmUtil.newConditionForExecution(domainId);
-		condition.addFilter("printerCd", printerCd);
-		
-		Printer printer = BeanUtil.get(IQueryManager.class).selectByCondition(Printer.class, condition);
-		
-		if(exceptionWhenEmpty && printer == null) {
-			throw new ElidomValidationException("프린터 [" + printer + "]가 존재하지 않습니다.");
-		}
-		
-		return printer;
-	}
-	
+
 }
