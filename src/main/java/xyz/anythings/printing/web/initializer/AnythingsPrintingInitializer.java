@@ -50,7 +50,7 @@ public class AnythingsPrintingInitializer {
 	
 	@EventListener({ContextRefreshedEvent.class})
     void contextRefreshedEvent(ContextRefreshedEvent event) {
-		this.logger.info("Anythings Printingmodule initializing started...");		
+		this.logger.info("Anythings Printing module initializing started...");		
     }
 	
 	/**
